@@ -1,0 +1,88 @@
+* { box-sizing: border-box; margin: 0; }
+html, body { height: 100%; }
+body {
+  font-family: "Trebuchet MS", "Comic Sans MS", system-ui, sans-serif;
+  background: radial-gradient(circle at 50% 30%, #2d1b55, #120a24 70%);
+  color: #fff;
+  overflow: hidden;
+  user-select: none;
+}
+.stage {
+  position: relative; height: 100dvh; display: flex; flex-direction: column;
+  align-items: center; justify-content: space-between; padding: 12px 2vw 4vh;
+}
+.leds {
+  position: absolute; inset: 0; pointer-events: none; opacity: .35;
+  background: conic-gradient(from 0deg at 50% 100%, #ff4d9d, #ffd84d, #4dff9d, #4dc9ff, #b04dff, #ff4d9d);
+  filter: blur(90px); animation: spin 8s linear infinite; transition: opacity .3s;
+}
+.celebrate .leds { opacity: .9; animation-duration: 1.2s; }
+@keyframes spin { to { filter: blur(90px) hue-rotate(360deg); } }
+
+.intro { margin: auto; text-align: center; z-index: 1; }
+.big-cat { font-size: 28vmin; animation: bob 2s ease-in-out infinite; }
+h1 { font-size: clamp(2rem, 7vw, 4rem); margin: 1vh 0 3vh; text-shadow: 0 0 20px #ff7ac8; }
+.play {
+  font: inherit; font-size: clamp(1.5rem, 5vw, 2.5rem); padding: .4em 1.6em; border: 0;
+  border-radius: 999px; background: linear-gradient(135deg, #ff7ac8, #7a8bff); color: #fff;
+  cursor: pointer; box-shadow: 0 0 30px #ff7ac8aa;
+}
+@keyframes bob { 50% { transform: translateY(-3vmin) rotate(4deg); } }
+
+.hud { width: 100%; display: flex; justify-content: space-between; font-size: 2rem; z-index: 1; }
+.again { font-size: 2rem; background: #ffffff22; border: 0; border-radius: 50%; width: 3.2rem; height: 3.2rem; cursor: pointer; }
+.target {
+  z-index: 1; font-size: clamp(8rem, 32vmin, 20rem); font-weight: 900; line-height: 1;
+  text-shadow: 0 0 30px #fff, 0 0 60px #ff7ac8; animation: pop .5s ease-out;
+}
+@keyframes pop { from { transform: scale(.3); opacity: 0; } }
+
+.keyboard {
+  z-index: 1; width: min(1100px, 100%); padding: 2.2vmin 2vmin 2.4vmin; margin-top: 3vmin;
+  background: #f7f5fb; border-radius: 28px;
+  box-shadow: 0 0 0 4px #fff, 0 0 40px 8px #ff7ac8aa, 0 0 90px 20px #7a8bff88, 0 20px 0 #cfc8de;
+  animation: glow 6s linear infinite;
+}
+@keyframes glow { to { filter: hue-rotate(360deg); } }
+.row { display: flex; gap: 1.2vmin; margin-bottom: 2.4vmin; justify-content: center; }
+.row:last-child { margin-bottom: 0; }
+.key {
+  position: relative; flex: 1; max-width: 90px; aspect-ratio: 1; border: 0; cursor: pointer;
+  border-radius: 22%; background: #fff; color: #5b3d8f; font: inherit; font-weight: 800;
+  font-size: clamp(1rem, 4.5vmin, 2.2rem);
+  box-shadow: 0 5px 0 #d6cfe6, inset 0 0 0 2px #ece7f5; transition: transform .08s, box-shadow .08s;
+}
+.ear {
+  position: absolute; top: -18%; width: 34%; height: 30%; background: #fff;
+  clip-path: polygon(50% 0, 100% 100%, 0 100%);
+}
+.ear::after { content: ""; position: absolute; inset: 35% 25% 0; background: #ffb3d9; clip-path: polygon(50% 0, 100% 100%, 0 100%); }
+.ear.l { left: 8%; transform: rotate(-12deg); }
+.ear.r { right: 8%; transform: rotate(12deg); }
+.face { position: relative; }
+.key::after {
+  content: ""; position: absolute; left: 50%; bottom: 8%; width: 38%; height: 5%;
+  transform: translateX(-50%); border-radius: 99px; background: #ffb3d9; opacity: .8;
+}
+.key.down { transform: translateY(4px); box-shadow: 0 1px 0 #d6cfe6; background: #ffe3f3; }
+.key.oops { animation: shake .4s; background: #ffe0e0; }
+@keyframes shake { 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
+.key.hint { animation: hint 1s ease-in-out infinite; z-index: 2; }
+@keyframes hint {
+  50% { transform: scale(1.18); box-shadow: 0 5px 0 #d6cfe6, 0 0 0 4px #ff7ac8, 0 0 28px 8px #ff7ac8; background: #fff0f8; }
+}
+
+.win {
+  position: fixed; inset: 0; z-index: 10; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; background: #ffffff1f; backdrop-filter: blur(4px);
+  pointer-events: none; animation: fadein .25s;
+}
+@keyframes fadein { from { opacity: 0; } }
+.win-cat { font-size: 40vmin; line-height: 1; animation: jump .8s ease-in-out infinite; filter: drop-shadow(0 0 40px #ffd84d); }
+.win-msg { font-size: clamp(2.5rem, 9vw, 6rem); font-weight: 900; text-shadow: 0 0 20px #ff7ac8, 0 4px 0 #0006; }
+@keyframes jump { 50% { transform: translateY(-6vmin) rotate(-6deg) scale(1.05); } }
+.confetti {
+  position: absolute; top: -10%; font-style: normal; font-size: 2.5rem;
+  animation: fall 2.4s ease-in forwards;
+}
+@keyframes fall { to { transform: translateY(115dvh) rotate(540deg); } }

@@ -1,0 +1,166 @@
+"use client";
+
+import { useCallback, useEffect, useRef, useState } from "react";
+
+const ROWS = [
+  "QWERTYUIOP".split(""),
+  "ASDFGHJKLÑ".split(""),
+  "ZXCVBNM".split(""),
+];
+const LETTERS = ROWS.flat();
+const CATS = ["🐱", "😺", "😸", "😻", "🐈", "😽"];
+const PRAISE = ["¡Muy bien!", "¡Genial!", "¡Lo lograste!", "¡Qué lista!", "¡Miau, perfecto!"];
+
+const LATAM = ["es-MX", "es-US", "es-419", "es-AR", "es-CO", "es-CL", "es-PE", "es-VE"];
+const FEMALE = /dalia|sabina|elena|salome|paulina|monica|helena|laura|google espa|female|mujer/i;
+
+function bestVoice(): SpeechSynthesisVoice | undefined {
+  const es = window.speechSynthesis.getVoices().filter((v) => v.lang.startsWith("es"));
+  const score = (v: SpeechSynthesisVoice) =>
+    (LATAM.some((l) => v.lang.replace("_", "-").startsWith(l)) ? 4 : 0) +
+    (FEMALE.test(v.name) ? 2 : 0) +
+    (/online|natural|neural/i.test(v.name) ? 1 : 0);
+  return es.sort((a, b) => score(b) - score(a))[0];
+}
+
+function speak(text: string) {
+  if (typeof window === "undefined" || !("speechSynthesis" in window)) return;
+  const synth = window.speechSynthesis;
+  synth.cancel();
+  const u = new SpeechSynthesisUtterance(text);
+  const voice = bestVoice();
+  u.lang = voice?.lang ?? "es-MX";
+  if (voice) u.voice = voice;
+  u.rate = 1;
+  u.pitch = 1.5;
+  synth.speak(u);
+}
+
+const pick = <T,>(a: T[]) => a[Math.floor(Math.random() * a.length)];
+
+export default function Game() {
+  const [started, setStarted] = useState(false);
+  const [target, setTarget] = useState("A");
+  const [pressed, setPressed] = useState<string | null>(null);
+  const [wrong, setWrong] = useState<string | null>(null);
+  const [win, setWin] = useState<{ cat: string; msg: string } | null>(null);
+  const [score, setScore] = useState(0);
+  const locked = useRef(false);
+  const timers = useRef<number[]>([]);
+
+  const later = (fn: () => void, ms: number) => {
+    timers.current.push(window.setTimeout(fn, ms));
+  };
+
+  const nextLetter = useCallback((prev?: string) => {
+    let l = pick(LETTERS);
+    while (l === prev) l = pick(LETTERS);
+    setTarget(l);
+    setWin(null);
+    locked.current = false;
+    speak(`Aprieta la letra ${l}`);
+  }, []);
+
+  const press = useCallback(
+    (letter: string) => {
+      if (!started || locked.current) return;
+      setPressed(letter);
+      later(() => setPressed(null), 250);
+      if (letter === target) {
+        locked.current = true;
+        const msg = pick(PRAISE);
+        setWin({ cat: pick(CATS), msg });
+        setScore((s) => s + 1);
+        speak(msg);
+        later(() => nextLetter(target), 2600);
+      } else {
+        setWrong(letter);
+        later(() => setWrong(null), 500);
+        speak(`Esa es la ${letter}. Busca la ${target}`);
+      }
+    },
+    [started, target, nextLetter],
+  );
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (e.ctrlKey || e.metaKey || e.altKey) return;
+      const k = e.key.toUpperCase();
+      if (LETTERS.includes(k)) {
+        e.preventDefault();
+        press(k);
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [press]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
+
+  const start = () => {
+    setStarted(true);
+    nextLetter();
+  };
+
+  return (
+    <main className={`stage ${win ? "celebrate" : ""}`}>
+      <div className="leds" aria-hidden />
+      {!started ? (
+        <div className="intro">
+          <div className="big-cat">🐱</div>
+          <h1>Teclado de Gatitos</h1>
+          <button className="play" onClick={start}>
+            ¡Jugar!
+          </button>
+        </div>
+      ) : (
+        <>
+          <header className="hud">
+            <span>⭐ {score}</span>
+            <button className="again" onClick={() => speak(`Aprieta la letra ${target}`)}>
+              🔊
+            </button>
+          </header>
+          <div className="target" key={target}>
+            {target}
+          </div>
+          <div className="keyboard">
+            {ROWS.map((row, i) => (
+              <div className="row" key={i} style={{ marginLeft: i === 2 ? "6%" : i === 1 ? "3%" : 0 }}>
+                {row.map((l) => (
+                  <button
+                    key={l}
+                    className={`key ${l === target ? "hint" : ""} ${pressed === l ? "down" : ""} ${wrong === l ? "oops" : ""}`}
+                    onClick={(e) => {
+                      e.currentTarget.blur();
+                      press(l);
+                    }}
+                  >
+                    <span className="ear l" />
+                    <span className="ear r" />
+                    <span className="face">{l}</span>
+                  </button>
+                ))}
+              </div>
+            ))}
+          </div>
+        </>
+      )}
+      {win && (
+        <div className="win" aria-live="polite">
+          <div className="win-cat">{win.cat}</div>
+          <div className="win-msg">{win.msg}</div>
+          {Array.from({ length: 24 }).map((_, i) => (
+            <i
+              key={i}
+              className="confetti"
+              style={{ left: `${(i * 37) % 100}%`, animationDelay: `${(i % 6) * 0.1}s` }}
+            >
+              {i % 3 === 0 ? "🐾" : i % 3 === 1 ? "✨" : "💖"}
+            </i>
+          ))}
+        </div>
+      )}
+    </main>
+  );
+}

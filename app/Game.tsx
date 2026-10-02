@@ -3,11 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
 const ROWS = [
+  "1234567890".split(""),
   "QWERTYUIOP".split(""),
   "ASDFGHJKLÑ".split(""),
   "ZXCVBNM".split(""),
 ];
+const kind = (c: string) => (/\d/.test(c) ? "el número" : "la letra");
 const LETTERS = ROWS.flat();
+const MODES = {
+  all: { label: "Todo", pool: LETTERS },
+  letters: { label: "Letras", pool: LETTERS.filter((c) => !/\d/.test(c)) },
+  numbers: { label: "Números", pool: LETTERS.filter((c) => /\d/.test(c)) },
+};
+type Mode = keyof typeof MODES;
 const CATS = ["🐱", "😺", "😸", "😻", "🐈", "😽"];
 const PRAISE = ["¡Muy bien!", "¡Genial!", "¡Lo lograste!", "¡Qué lista!", "¡Miau, perfecto!"];
 
@@ -46,6 +54,7 @@ export default function Game() {
   const [win, setWin] = useState<{ cat: string; msg: string } | null>(null);
   const [score, setScore] = useState(0);
   const locked = useRef(false);
+  const mode = useRef<Mode>("all");
   const timers = useRef<number[]>([]);
 
   const later = (fn: () => void, ms: number) => {
@@ -53,12 +62,13 @@ export default function Game() {
   };
 
   const nextLetter = useCallback((prev?: string) => {
-    let l = pick(LETTERS);
-    while (l === prev) l = pick(LETTERS);
+    const pool = MODES[mode.current].pool;
+    let l = pick(pool);
+    while (l === prev) l = pick(pool);
     setTarget(l);
     setWin(null);
     locked.current = false;
-    speak(`Aprieta la letra ${l}`);
+    speak(`Aprieta ${kind(l)} ${l}`);
   }, []);
 
   const press = useCallback(
@@ -76,7 +86,7 @@ export default function Game() {
       } else {
         setWrong(letter);
         later(() => setWrong(null), 500);
-        speak(`Esa es la ${letter}. Busca la ${target}`);
+        speak(`Ese es ${/\d/.test(letter) ? "el" : "la"} ${letter}. Busca ${kind(target)} ${target}`);
       }
     },
     [started, target, nextLetter],
@@ -97,7 +107,9 @@ export default function Game() {
 
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
-  const start = () => {
+  const start = (m: Mode) => {
+    mode.current = m;
+    setScore(0);
     setStarted(true);
     nextLetter();
   };
@@ -109,15 +121,22 @@ export default function Game() {
         <div className="intro">
           <div className="big-cat">🐱</div>
           <h1>Teclado de Gatitos</h1>
-          <button className="play" onClick={start}>
-            ¡Jugar!
-          </button>
+          <div className="modes">
+            {(Object.keys(MODES) as Mode[]).map((m) => (
+              <button key={m} className="play" onClick={() => start(m)}>
+                {MODES[m].label}
+              </button>
+            ))}
+          </div>
         </div>
       ) : (
         <>
           <header className="hud">
+            <button className="again" onClick={() => setStarted(false)}>
+              🏠
+            </button>
             <span>⭐ {score}</span>
-            <button className="again" onClick={() => speak(`Aprieta la letra ${target}`)}>
+            <button className="again" onClick={() => speak(`Aprieta ${kind(target)} ${target}`)}>
               🔊
             </button>
           </header>
@@ -126,7 +145,7 @@ export default function Game() {
           </div>
           <div className="keyboard">
             {ROWS.map((row, i) => (
-              <div className="row" key={i} style={{ marginLeft: i === 2 ? "6%" : i === 1 ? "3%" : 0 }}>
+              <div className="row" key={i} style={{ marginLeft: i === 3 ? "6%" : i === 2 ? "3%" : 0 }}>
                 {row.map((l) => (
                   <button
                     key={l}

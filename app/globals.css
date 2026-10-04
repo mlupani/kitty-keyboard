@@ -88,3 +88,13 @@ h1 { font-size: clamp(2rem, 7vw, 4rem); margin: 1vh 0 3vh; text-shadow: 0 0 20px
 @keyframes fall { to { transform: translateY(115dvh) rotate(540deg); } }
 .modes { display: flex; gap: 2vmin; flex-wrap: wrap; justify-content: center; }
 .modes .play { font-size: clamp(1.2rem, 4vw, 2rem); }
+.play:disabled { opacity: .4; cursor: not-allowed; box-shadow: none; }
+.name-input {
+  font: inherit; font-size: clamp(1.2rem, 4vw, 2rem); text-align: center; padding: .3em 1em;
+  margin-bottom: 3vh; border: 0; border-radius: 999px; background: #ffffff22; color: #fff; outline: 0;
+}
+.name-input::placeholder { color: #ffffff88; }
+.namebar { z-index: 1; display: flex; gap: 1.2vmin; font-size: clamp(2rem, 8vmin, 4rem); font-weight: 900; }
+.namebar span { opacity: .35; transition: .3s; }
+.namebar .got { opacity: 1; color: #ffd84d; text-shadow: 0 0 20px #ffd84d; }
+.namebar .now { opacity: 1; text-decoration: underline; }

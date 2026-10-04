@@ -14,8 +14,22 @@ const MODES = {
   all: { label: "Todo", pool: LETTERS },
   letters: { label: "Letras", pool: LETTERS.filter((c) => !/\d/.test(c)) },
   numbers: { label: "Números", pool: LETTERS.filter((c) => /\d/.test(c)) },
+  words: { label: "Animalitos", pool: LETTERS },
+  name: { label: "Mi nombre", pool: LETTERS },
 };
 type Mode = keyof typeof MODES;
+const WORDS: [string, string][] = [
+  ["🐶", "perro"], ["🐱", "gato"], ["🐟", "pez"], ["🌞", "sol"], ["🍎", "manzana"],
+  ["🏠", "casa"], ["🌙", "luna"], ["🐮", "vaca"], ["🐴", "caballo"], ["🦆", "pato"],
+  ["🐸", "rana"], ["🐻", "oso"], ["🐭", "ratón"], ["🌸", "flor"], ["👵", "abuela"],
+  ["🍌", "banana"], ["🐘", "elefante"], ["🦁", "león"], ["🐢", "tortuga"], ["🎈", "globo"],
+];
+const cleanName = (n: string) =>
+  n
+    .toUpperCase()
+    .split("")
+    .map((c) => (c === "Ñ" ? c : c.normalize("NFD")[0]))
+    .filter((c) => LETTERS.includes(c) && !/\d/.test(c));
 const CATS = ["🐱", "😺", "😸", "😻", "🐈", "😽"];
 const PRAISE = ["¡Muy bien!", "¡Genial!", "¡Lo lograste!", "¡Qué lista!", "¡Miau, perfecto!"];
 
@@ -53,6 +67,13 @@ export default function Game() {
   const [wrong, setWrong] = useState<string | null>(null);
   const [win, setWin] = useState<{ cat: string; msg: string } | null>(null);
   const [score, setScore] = useState(0);
+  const [emoji, setEmoji] = useState<string | null>(null);
+  const [name, setName] = useState("");
+  const [done, setDone] = useState(0);
+  const wordRef = useRef<[string, string] | null>(null);
+  const nameRef = useRef<string[]>([]);
+  const nameIdx = useRef(0);
+  const prompt = useRef("");
   const locked = useRef(false);
   const mode = useRef<Mode>("all");
   const timers = useRef<number[]>([]);
@@ -62,13 +83,31 @@ export default function Game() {
   };
 
   const nextLetter = useCallback((prev?: string) => {
-    const pool = MODES[mode.current].pool;
-    let l = pick(pool);
-    while (l === prev) l = pick(pool);
+    const m = mode.current;
+    let l: string;
+    if (m === "words") {
+      let w = pick(WORDS);
+      while (w === wordRef.current) w = pick(WORDS);
+      wordRef.current = w;
+      l = w[1][0].toUpperCase();
+      setEmoji(w[0]);
+      prompt.current = `¿Con qué letra empieza ${w[1]}?`;
+    } else if (m === "name") {
+      l = nameRef.current[nameIdx.current];
+      setEmoji(null);
+      setDone(nameIdx.current);
+      prompt.current = `Aprieta la letra ${l}`;
+    } else {
+      const pool = MODES[m].pool;
+      l = pick(pool);
+      while (l === prev) l = pick(pool);
+      setEmoji(null);
+      prompt.current = `Aprieta ${kind(l)} ${l}`;
+    }
     setTarget(l);
     setWin(null);
     locked.current = false;
-    speak(`Aprieta ${kind(l)} ${l}`);
+    speak(prompt.current);
   }, []);
 
   const press = useCallback(
@@ -78,7 +117,16 @@ export default function Game() {
       later(() => setPressed(null), 250);
       if (letter === target) {
         locked.current = true;
-        const msg = pick(PRAISE);
+        let msg = pick(PRAISE);
+        if (mode.current === "words") msg = `¡${target} de ${wordRef.current?.[1]}!`;
+        if (mode.current === "name") {
+          nameIdx.current += 1;
+          setDone(nameIdx.current);
+          if (nameIdx.current >= nameRef.current.length) {
+            msg = `¡Escribiste ${nameRef.current.join("")}!`;
+            nameIdx.current = 0;
+          }
+        }
         setWin({ cat: pick(CATS), msg });
         setScore((s) => s + 1);
         speak(msg);
@@ -86,7 +134,8 @@ export default function Game() {
       } else {
         setWrong(letter);
         later(() => setWrong(null), 500);
-        speak(`Ese es ${/\d/.test(letter) ? "el" : "la"} ${letter}. Busca ${kind(target)} ${target}`);
+        const hint = mode.current === "words" ? prompt.current : `Busca ${kind(target)} ${target}`;
+        speak(`Ese es ${/\d/.test(letter) ? "el" : "la"} ${letter}. ${hint}`);
       }
     },
     [started, target, nextLetter],
@@ -95,6 +144,7 @@ export default function Game() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.ctrlKey || e.metaKey || e.altKey) return;
+      if ((e.target as HTMLElement)?.tagName === "INPUT") return;
       const k = e.key.toUpperCase();
       if (LETTERS.includes(k)) {
         e.preventDefault();
@@ -105,9 +155,20 @@ export default function Game() {
     return () => window.removeEventListener("keydown", onKey);
   }, [press]);
 
+  useEffect(() => {
+    try {
+      setName(localStorage.getItem("gatito-name") ?? "");
+    } catch {}
+  }, []);
+
   useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   const start = (m: Mode) => {
+    if (m === "name") {
+      nameRef.current = cleanName(name);
+      if (!nameRef.current.length) return;
+      nameIdx.current = 0;
+    }
     mode.current = m;
     setScore(0);
     setStarted(true);
@@ -121,9 +182,26 @@ export default function Game() {
         <div className="intro">
           <div className="big-cat">🐱</div>
           <h1>Teclado de Gatitos</h1>
+          <input
+            className="name-input"
+            placeholder="Escribe su nombre"
+            maxLength={12}
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              try {
+                localStorage.setItem("gatito-name", e.target.value);
+              } catch {}
+            }}
+          />
           <div className="modes">
             {(Object.keys(MODES) as Mode[]).map((m) => (
-              <button key={m} className="play" onClick={() => start(m)}>
+              <button
+                key={m}
+                className="play"
+                disabled={m === "name" && !cleanName(name).length}
+                onClick={() => start(m)}
+              >
                 {MODES[m].label}
               </button>
             ))}
@@ -136,12 +214,21 @@ export default function Game() {
               🏠
             </button>
             <span>⭐ {score}</span>
-            <button className="again" onClick={() => speak(`Aprieta ${kind(target)} ${target}`)}>
+            <button className="again" onClick={() => speak(prompt.current)}>
               🔊
             </button>
           </header>
-          <div className="target" key={target}>
-            {target}
+          {mode.current === "name" && (
+            <div className="namebar">
+              {nameRef.current.map((c, i) => (
+                <span key={i} className={i < done ? "got" : i === done ? "now" : ""}>
+                  {c}
+                </span>
+              ))}
+            </div>
+          )}
+          <div className="target" key={emoji ?? target}>
+            {emoji ?? target}
           </div>
           <div className="keyboard">
             {ROWS.map((row, i) => (
